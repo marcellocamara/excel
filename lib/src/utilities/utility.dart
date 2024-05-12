@@ -45,18 +45,6 @@ Iterable<XmlElement> _findCells(XmlElement row) {
   return row.findElements('c');
 }
 
-int? _getCellNumber(XmlElement cell) {
-  var r = cell.getAttribute('r');
-  if (r == null) {
-    return null;
-  }
-  return _cellCoordsFromCellId(r).$2;
-}
-
-int? _getRowNumber(XmlElement row) {
-  return int.tryParse(row.getAttribute('r').toString());
-}
-
 int _checkPosition(List<CellStyle> list, CellStyle cellStyle) {
   return list.indexOf(cellStyle);
 }

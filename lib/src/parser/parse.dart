@@ -1,13 +1,13 @@
-part of excel;
+part of '../../excel.dart';
 
 class Parser {
   late Excel _excel;
   late List<String> _rId;
   late Map<String, String> _worksheetTargets;
   Parser._(Excel excel) {
-    this._excel = excel;
-    this._rId = <String>[];
-    this._worksheetTargets = <String, String>{};
+    _excel = excel;
+    _rId = <String>[];
+    _worksheetTargets = <String, String>{};
   }
 
   void _startParsing() {
@@ -151,7 +151,11 @@ class Parser {
       _damagedExcel();
     }
     workbook!.decompress();
-    var document = XmlDocument.parse(utf8.decode(workbook.content));
+    var document = XmlDocument.parse(
+      utf8.decode(workbook.content)
+          .replaceAll('<x:', '<')
+          .replaceAll('</x:', '</'),
+    );
     _excel._xmlFiles["xl/workbook.xml"] = document;
 
     document.findAllElements('sheet').forEach((node) {
@@ -542,7 +546,9 @@ class Parser {
     var file = _excel._archive.findFile('xl/$target');
     file!.decompress();
 
-    var content = XmlDocument.parse(utf8.decode(file.content));
+    var content = XmlDocument.parse(
+      utf8.decode(file.content).replaceAll('<x:', '<').replaceAll('</x:', '</'),
+    );
     var worksheet = content.findElements('worksheet').first;
 
     ///
@@ -556,8 +562,10 @@ class Parser {
     }
     var sheet = worksheet.findElements('sheetData').first;
 
+    int i = 0;
     _findRows(sheet).forEach((child) {
-      _parseRow(child, sheetObject, name);
+      _parseRow(child, i, sheetObject, name);
+      i++;
     });
 
     _parseHeaderFooter(worksheet, sheetObject);
@@ -571,24 +579,21 @@ class Parser {
     _normalizeTable(sheetObject);
   }
 
-  _parseRow(XmlElement node, Sheet sheetObject, String name) {
-    var rowIndex = (_getRowNumber(node) ?? -1) - 1;
-    if (rowIndex < 0) {
-      return;
-    }
-
+  _parseRow(XmlElement node, int rowIndex, Sheet sheetObject, String name) {
+    int i = 0;
     _findCells(node).forEach((child) {
-      _parseCell(child, sheetObject, rowIndex, name);
+      _parseCell(child, sheetObject, rowIndex, i, name);
+      i++;
     });
   }
 
   void _parseCell(
-      XmlElement node, Sheet sheetObject, int rowIndex, String name) {
-    int? columnIndex = _getCellNumber(node);
-    if (columnIndex == null) {
-      return;
-    }
-
+    XmlElement node,
+    Sheet sheetObject,
+    int rowIndex,
+    int columnIndex,
+    String name,
+  ) {
     var s1 = node.getAttribute('s');
     int s = 0;
     if (s1 != null) {
@@ -654,7 +659,11 @@ class Parser {
               value = numFormat.read(v);
             }
           } else {
-            final v = _parseValue(vNode);
+            String v = _parseValue(vNode);
+            if (v.trim() == '-') {
+              value = TextCellValue(_parseValue(vNode));
+              break;
+            }
             value = NumFormat.defaultNumeric.read(v);
           }
         }
